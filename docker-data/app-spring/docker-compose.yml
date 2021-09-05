@@ -1,0 +1,57 @@
+version: "3.7"
+
+services:
+
+  postgres:
+    image: library/postgres:12.3-alpine
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    env_file:
+      - .env
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d/
+
+#  app-spring-backend:
+#    image: app-spring-backend:latest
+#    build:
+##      context: ../../app-spring-backend/
+##          args:
+##            JAR_FILE: /target/app-spring-backend-0.0.1-SNAPSHOT.jar
+#    container_name: app-spring-backend
+#    expose:
+#      - 8080
+#    ports:
+#      - 8080:8080
+#    depends_on:
+#      - postgres
+#    links:
+#      - postgres
+#    environment:
+#      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/appspring?currentSchema=app-spring
+
+  app-spring-backend:
+    image: app-spring-backend:latest
+    build:
+      context:  ../../app-spring-backend/
+      args:
+        JAR_FILE: /target/app-spring-backend-0.0.1-SNAPSHOT.jar
+    container_name: app-spring-backend
+    expose:
+      - 8080
+    ports:
+      - 8080:8080
+    depends_on:
+      - postgres
+    links:
+      - postgres
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/appspring?currentSchema=app-spring
+
+volumes:
+  db-data:
+
