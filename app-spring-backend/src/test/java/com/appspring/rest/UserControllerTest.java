@@ -1,8 +1,10 @@
 package com.appspring.rest;
 
 import com.appspring.ContainerisedDatabaseTest;
+import com.appspring.dataset.UserDataset;
 import com.appspring.entity.User;
 import com.appspring.entity.model.Role;
+import com.appspring.entity.model.UserStatus;
 import com.appspring.repository.UserRepository;
 import com.appspring.rest.dto.UserRqDto;
 import com.appspring.service.UserService;
@@ -13,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -38,18 +41,23 @@ class UserControllerTest extends ContainerisedDatabaseTest {
     private UserRepository userRepository;
 
     @Autowired
-    private UserService userService;
+    private UserDataset userDataset;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        userDataset.createData();
     }
 
     @AfterEach
     void tearDown() {
+        userDataset.removeData();
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = "admin")
     void getAllTest() throws Exception {
         mockMvc.perform(get("/users"))
                 .andDo(MockMvcResultHandlers.print())
@@ -63,21 +71,25 @@ class UserControllerTest extends ContainerisedDatabaseTest {
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = "admin")
     void getByIdTest() throws Exception {
-        User user = userRepository.findByLogin("user")
+        User user = userRepository.findByLogin("user2")
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден."));
+
         mockMvc.perform(get("/users/" + user.getId()))
                 .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("id", Matchers.equalTo(user.getId().intValue())))
-                .andExpect(jsonPath("username", Matchers.notNullValue()));
+                .andExpect(jsonPath("login", Matchers.notNullValue()));
     }
 
     @Test
+    @WithMockUser(username = "admin", password = "admin", roles = "admin")
     void createTest() throws Exception {
         UserRqDto userRq = UserRqDto.builder()
-                .login("user1")
+                .login("user3")
                 .role(Role.ROLE_USER)
+                .newPassword(passwordEncoder.encode("111111"))
                 .build();
 
         mockMvc.perform(postJson(userRq, "/users"))
@@ -89,6 +101,7 @@ class UserControllerTest extends ContainerisedDatabaseTest {
     }
 
     @Test
+    @WithMockUser(username = "admin", password = "111111", roles = "admin")
     void updateTest() throws Exception {
         User user = userRepository.findByLogin("user1")
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден."));
@@ -97,7 +110,7 @@ class UserControllerTest extends ContainerisedDatabaseTest {
 
         UserRqDto userRq = UserRqDto.builder()
                 .login(user.getLogin())
-                .role(Role.ROLE_USER)
+                .role(Role.ROLE_ADMIN)
                 .build();
 
         mockMvc.perform(putJson(userRq, "/users/" + user.getId()))
@@ -108,8 +121,9 @@ class UserControllerTest extends ContainerisedDatabaseTest {
     }
 
     @Test
+    @WithMockUser(username = "admin", password = "111111", roles = "admin")
     void deleteTest() throws Exception {
-        User user = userRepository.findByLogin("user")
+        User user = userRepository.findByLogin("user2")
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден."));
 
         mockMvc.perform(delete("/users/" + user.getId()))
@@ -117,15 +131,15 @@ class UserControllerTest extends ContainerisedDatabaseTest {
                 .andExpect(status().isAccepted());
     }
 
-    @WithMockUser(username = "admin", roles = "user")
     @Test
+    @WithMockUser(username = "admin1", roles = "user")
     void getCurrentTest() throws Exception {
         mockMvc.perform(get("/users/current"))
                 .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk());
     }
 
-    @WithMockUser(username = "user", roles = "user")
+    @WithMockUser(username = "user1", password = "111111", roles = "user")
     @Test
     void updateCurrentTest() throws Exception {
         User user = userRepository.findByLogin("user1")
@@ -133,7 +147,7 @@ class UserControllerTest extends ContainerisedDatabaseTest {
 
         UserRqDto userRq = UserRqDto.builder()
                 .login(user.getLogin())
-                .role(Role.ROLE_USER)
+                .role(Role.ROLE_ADMIN)
                 .build();
         mockMvc.perform(putJson(userRq, "/users/current"))
                 .andDo(MockMvcResultHandlers.print())
