@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
-//@WithMockUser(username = "admin", password = "admin", roles = "admin")
+@WithMockUser(username = "admin1", password = "111111", roles = "admin")
 class UserControllerTest extends ContainerisedDatabaseTest {
 
     @Autowired
@@ -105,8 +105,6 @@ class UserControllerTest extends ContainerisedDatabaseTest {
     void updateTest() throws Exception {
         User user = userRepository.findByLogin("user1")
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден."));
-
-//        ServiceProvider serviceProvider = userDataset.createServiceProvider();
 
         UserRqDto userRq = UserRqDto.builder()
                 .login(user.getLogin())
