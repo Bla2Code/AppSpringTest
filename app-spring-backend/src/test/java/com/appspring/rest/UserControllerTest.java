@@ -4,10 +4,8 @@ import com.appspring.ContainerisedDatabaseTest;
 import com.appspring.dataset.UserDataset;
 import com.appspring.entity.User;
 import com.appspring.entity.model.Role;
-import com.appspring.entity.model.UserStatus;
 import com.appspring.repository.UserRepository;
 import com.appspring.rest.dto.UserRqDto;
-import com.appspring.service.UserService;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
-@WithMockUser(username = "admin1", password = "111111", roles = "admin")
+//@WithMockUser(username = "admin1", password = "111111", roles = "admin")
 class UserControllerTest extends ContainerisedDatabaseTest {
 
     @Autowired
