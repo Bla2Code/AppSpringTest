@@ -1,7 +1,6 @@
 package com.appspring.service;
 
 import com.appspring.entity.User;
-import com.appspring.rest.dto.UserFilterDto;
 import com.appspring.rest.dto.UserRqDto;
 import com.appspring.rest.dto.UserRsDto;
 import org.springframework.data.domain.Page;

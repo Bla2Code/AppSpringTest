@@ -1,7 +1,6 @@
 package com.appspring.rest.dto;
 
 import com.appspring.entity.model.Role;
-import com.appspring.entity.model.UserStatus;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
