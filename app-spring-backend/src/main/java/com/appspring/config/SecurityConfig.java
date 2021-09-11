@@ -74,26 +74,16 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers(HttpMethod.POST, "/auth/logout").hasRole("USER")
                 .antMatchers(HttpMethod.GET, "/users/current").hasRole("USER")
                 .antMatchers(HttpMethod.PUT, "/users/**").hasRole("USER")
-                .antMatchers(HttpMethod.GET, "/files").hasRole("USER")
-                .antMatchers(HttpMethod.GET, "/objects/**").hasRole("USER")
-                .antMatchers(HttpMethod.GET, "/equipments/**").hasRole("USER")
-                .antMatchers(HttpMethod.GET, "/equipment_subtypes/**").hasRole("USER")
-                .antMatchers(HttpMethod.GET, "/equipment_types/**").hasRole("USER")
-                .antMatchers(HttpMethod.GET, "/projects/**").hasRole("USER")
-                .antMatchers(HttpMethod.GET, "/maintenance_statuses/**").hasRole("USER")
-                .antMatchers(HttpMethod.GET, "/document_categories/**").hasRole("USER")
                 .antMatchers("/public/**").permitAll()
                 .antMatchers("/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
                 .and()
                 .exceptionHandling()
                 .authenticationEntryPoint(
-                        (request, response, ex) -> {
-                            response.sendError(
-                                    HttpServletResponse.SC_UNAUTHORIZED,
-                                    ex.getMessage()
-                            );
-                        }
+                        (request, response, ex) -> response.sendError(
+                                HttpServletResponse.SC_UNAUTHORIZED,
+                                ex.getMessage()
+                        )
                 )
                 .and()
                 .sessionManagement()

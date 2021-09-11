@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -56,6 +57,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public Optional<UserRsDto> getById(Long id) {
         return userRepository.findById(id)
+                .filter(user -> user.getDeleted().equals(false))
                 .map(userMapper::entityToRsDto);
     }
 
@@ -65,9 +67,11 @@ public class UserServiceImpl implements UserService {
         validateUser(userRqDto);
         User user = userMapper.rqDtoToEntity(userRqDto);
         user.setPassword(passwordEncoder.encode(userRqDto.getNewPassword()));
-        User saved = userRepository.save(user);
+        Instant now = Instant.now();
+        user.setCreated(now);
+        user.setUpdated(now);
 
-        return userMapper.entityToRsDto(saved);
+        return userMapper.entityToRsDto(userRepository.save(user));
     }
 
     @Transactional(readOnly = true)
@@ -81,7 +85,51 @@ public class UserServiceImpl implements UserService {
     @Override
     public Optional<UserRsDto> findByLogin(String login) {
         return userRepository.findByLogin(login)
+                .filter(user -> user.getDeleted().equals(false))
                 .map(userMapper::entityToRsDto);
+    }
+
+    @Transactional
+    @Override
+    public Optional<UserRsDto> update(Long id, UserRqDto userRqDto) {
+        User user = userRepository.findById(id)
+                .filter(isDelete -> isDelete.getDeleted().equals(false))
+                .orElseThrow(() -> {
+                    log.warn("Пользователь для обновления с id = {} не найден.", id);
+                    throw new BadRequestException(String.format(USER_NOT_FOUND, id));
+                });
+
+        validateUserUpdate(user, userRqDto);
+
+        BeanUtils.copyProperties(userRqDto, user, BeanUtilsHelper.getNullPropertyNames(
+                userRqDto, "password", "role"));
+
+        if (Objects.nonNull(userRqDto.getNewPassword())) {
+            user.setPassword(passwordEncoder.encode(userRqDto.getNewPassword()));
+        }
+
+        Instant now = Instant.now();
+        user.setUpdated(now);
+
+        return Optional.of(user).map(userMapper::entityToRsDto);
+    }
+
+    @Transactional
+    @Override
+    public void delete(Long id) {
+        if (isCurrentUser(id)) {
+            log.warn("Попытка удалить собственную запись");
+            throw new ForbiddenException(USER_OWN);
+        }
+
+        userRepository.findById(id)
+                .filter(isDelete -> isDelete.getDeleted().equals(false))
+                .ifPresentOrElse(
+                        user -> {
+                            user.setDeleted(true);
+                            user.setUpdated(Instant.now());
+                        },
+                        () -> log.warn("Пользователь для удаления с id = {} не найден.", id));
     }
 
     private Boolean isAdmin() {
@@ -98,76 +146,21 @@ public class UserServiceImpl implements UserService {
     private void validateUserUpdate(User user, UserRqDto userRqDto) {
         Boolean isAdmin = isAdmin();
 
-        if (!isAdmin && StringUtils.isEmpty(userRqDto.getCurrentPassword())) {
-            log.warn("При обновлении пользователя с id = {} не задан пароль.", user.getId());
+        if (!isAdmin &&
+                StringUtils.isEmpty(userRqDto.getCurrentPassword()) &&
+                !StringUtils.isEmpty(userRqDto.getNewPassword())) {
+            log.warn("При обновлении пароля пользователя с id = {} не задан текущий пароль.", user.getId());
             throw new BadRequestException(PASSWORD_NOT_SET);
         }
 
-        if (!isAdmin && !passwordEncoder.matches(userRqDto.getCurrentPassword(), user.getPassword())) {
-            log.warn("При обновлении пользователя с id = {} не верно введен пароль", user.getId());
+        if (!isAdmin &&
+                !StringUtils.isEmpty(userRqDto.getCurrentPassword()) &&
+                !StringUtils.isEmpty(userRqDto.getNewPassword()) &&
+                !passwordEncoder.matches(userRqDto.getCurrentPassword(), user.getPassword())) {
+            log.warn("При обновлении пароля пользователя с id = {} не верно введен пароль", user.getId());
             throw new PasswordNotValidException(PASSWORD_NOT_MATCH);
         }
     }
-
-    @Transactional
-    @Override
-    public Optional<UserRsDto> update(Long id, UserRqDto userRqDto) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.warn("Пользователь для обновления с id = {} не найден.", id);
-                    throw new BadRequestException(String.format(USER_NOT_FOUND, id));
-                });
-
-        validateUserUpdate(user, userRqDto);
-
-        BeanUtils.copyProperties(userRqDto, user, BeanUtilsHelper.getNullPropertyNames(userRqDto, "password"));
-        if (Objects.nonNull(userRqDto.getNewPassword())) {
-            user.setPassword(passwordEncoder.encode(userRqDto.getNewPassword()));
-        }
-
-        return Optional.of(user).map(userMapper::entityToRsDto);
-    }
-
-    @Transactional
-    @Override
-    public void delete(Long id) {
-        if (isCurrentUser(id)) {
-            log.warn("Попытка удалить собственную запись");
-            throw new ForbiddenException(USER_OWN);
-        }
-
-        userRepository.findById(id)
-                .ifPresentOrElse(
-                        userRepository::delete,
-                        () -> log.warn("Пользователь для удаления с id = {} не найден.", id));
-    }
-
-//    @Transactional
-//    @Override
-//    public Optional<UserRsDto> updateLastActivity(Instant activity, Long id) {
-//        var user = userRepository.findById(id);
-//        user.ifPresent(it -> it.setLastActivity(activity));
-//        return user.map(userMapper::entityToRsDto);
-//    }
-//
-//    @Transactional
-//    @Override
-//    public Optional<UserRsDto> block(Long id) {
-//        if (isCurrentUser(id)) {
-//            throw new BadRequestException("Нельзя заблокировать собственную учетную запись");
-//        }
-//        Optional<User> user = userRepository.findById(id);
-//        user.ifPresent(it -> it.setStatus(UserStatus.BLOCKED));
-//        return user.map(userMapper::entityToRsDto);
-//    }
-//
-//    @Transactional
-//    @Override
-//    public Optional<UserRsDto> unblock(Long id) {
-//        Optional<User> user = userRepository.findById(id);
-//        user.ifPresent(it -> it.setStatus(UserStatus.ACTIVE));
-//        return user.map(userMapper::entityToRsDto);
-//    }
 
     private UserDetails getCurrentUserDetails() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -176,10 +169,9 @@ public class UserServiceImpl implements UserService {
 
     public void validateUser(UserRqDto userRqDto) {
         String login = userRqDto.getLogin();
-        userRepository.findByLogin(login)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, String.format(USER_ALREADY_EXISTS, login))
-                );
+        if (userRepository.findByLogin(login).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, String.format(USER_ALREADY_EXISTS, login));
+        }
     }
 
     private boolean isCurrentUser(Long id) {

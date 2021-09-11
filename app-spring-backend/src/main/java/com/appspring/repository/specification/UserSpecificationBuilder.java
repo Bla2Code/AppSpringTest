@@ -10,7 +10,7 @@ public class UserSpecificationBuilder {
     public static Specification<User> getEventConfigSpecification(UserFilterDto filter) {
 
         var specification = (Specification<User>)
-                (root, query, criteriaBuilder) -> null;
+                (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("deleted"), false);
 
         if (!StringUtils.isEmpty(filter.getLogin())) {
             specification = specification.and(inLogin(filter.getLogin()));

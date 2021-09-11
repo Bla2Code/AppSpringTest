@@ -1,6 +1,7 @@
 package com.appspring.mapper;
 
 import com.appspring.entity.User;
+import com.appspring.entity.model.UserStatus;
 import com.appspring.rest.dto.UserRqDto;
 import com.appspring.rest.dto.UserRsDto;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class UserMapper {
         return User.builder()
                 .login(source.getLogin())
                 .role(source.getRole())
+                .status(UserStatus.ACTIVE) //Сейчас это фиктивный статус, ни как не обрабатывается
                 .build();
     }
 }
