@@ -7,7 +7,7 @@ import org.springframework.util.StringUtils;
 
 public class UserSpecificationBuilder {
 
-    public static Specification<User> getEventConfigSpecification(UserFilterDto filter) {
+    public static Specification<User> getUserConfigSpecification(UserFilterDto filter) {
 
         var specification = (Specification<User>)
                 (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("deleted"), false);
@@ -15,7 +15,6 @@ public class UserSpecificationBuilder {
         if (!StringUtils.isEmpty(filter.getLogin())) {
             specification = specification.and(inLogin(filter.getLogin()));
         }
-
 
         return specification;
     }

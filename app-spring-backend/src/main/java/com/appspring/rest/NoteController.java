@@ -1,12 +1,13 @@
 package com.appspring.rest;
 
-import com.appspring.repository.specification.UserSpecificationBuilder;
-import com.appspring.rest.dto.UserFilterDto;
-import com.appspring.rest.dto.UserRqDto;
+import com.appspring.repository.specification.NoteSpecificationBuilder;
+import com.appspring.rest.dto.NoteFilterDto;
+import com.appspring.rest.dto.NoteRqDto;
+import com.appspring.rest.dto.NoteRsDto;
 import com.appspring.rest.dto.UserRsDto;
 import com.appspring.rest.dto.validation.CreateRq;
 import com.appspring.rest.dto.validation.UpdateRq;
-import com.appspring.service.UserService;
+import com.appspring.service.NoteService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
@@ -31,28 +32,28 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.HttpURLConnection;
 
-@Api(tags = "Пользователи")
+@Api(tags = "Заметки")
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/users")
-public class UserController {
+@RequestMapping("/notes")
+public class NoteController {
 
-    private static final String USER_NOT_FOUND_BY_ID = "Пользователь с id = %d не найден";
+    private static final String NOTE_NOT_FOUND_BY_ID = "Заметка с id = %d не найдена";
 
-    private final UserService userService;
+    private final NoteService noteService;
 
-    @ApiOperation("Запрос списка пользователей")
+    @ApiOperation("Запрос списка всех заметок пользователя")
     @ApiResponses({
             @ApiResponse(code = HttpURLConnection.HTTP_OK, message = "OK"),
             @ApiResponse(code = HttpURLConnection.HTTP_UNAUTHORIZED, message = "UNAUTHORIZED"),
             @ApiResponse(code = HttpURLConnection.HTTP_FORBIDDEN, message = "FORBIDDEN")
     })
     @GetMapping
-    public Page<UserRsDto> getAll(@ModelAttribute UserFilterDto filter, Pageable pageable) {
-        return userService.findAll(UserSpecificationBuilder.getUserConfigSpecification(filter), pageable);
+    public Page<NoteRsDto> getAll(@ModelAttribute NoteFilterDto filter, Pageable pageable) {
+        return noteService.findAll(NoteSpecificationBuilder.getNoteConfigSpecification(filter), pageable);
     }
 
-    @ApiOperation("Запрос пользователя по ID")
+    @ApiOperation("Запрос заметки по ID")
     @ApiResponses({
             @ApiResponse(code = HttpURLConnection.HTTP_OK, message = "OK"),
             @ApiResponse(code = HttpURLConnection.HTTP_NOT_FOUND, message = "NOT FOUND"),
@@ -60,28 +61,15 @@ public class UserController {
             @ApiResponse(code = HttpURLConnection.HTTP_FORBIDDEN, message = "FORBIDDEN")
     })
     @GetMapping("/{id}")
-    public UserRsDto getById(@PathVariable Long id) {
-        return userService.getById(id)
+    public NoteRsDto getById(@PathVariable Long id) {
+        return noteService.getById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        String.format(USER_NOT_FOUND_BY_ID, id)
+                        String.format(NOTE_NOT_FOUND_BY_ID, id)
                 ));
     }
 
-    @ApiOperation("Запрос текущего авторизованного пользователя")
-    @ApiResponses({
-            @ApiResponse(code = HttpURLConnection.HTTP_OK, message = "OK"),
-            @ApiResponse(code = HttpURLConnection.HTTP_NOT_FOUND, message = "NOT FOUND"),
-            @ApiResponse(code = HttpURLConnection.HTTP_UNAUTHORIZED, message = "UNAUTHORIZED"),
-            @ApiResponse(code = HttpURLConnection.HTTP_FORBIDDEN, message = "FORBIDDEN")
-    })
-    @GetMapping("/current")
-    public UserRsDto getCurrentUser() {
-        return userService.getCurrentUser()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-    }
-
-    @ApiOperation("Создание пользователя")
+    @ApiOperation("Создание заметки")
     @ApiResponses({
             @ApiResponse(code = HttpURLConnection.HTTP_OK, message = "OK"),
             @ApiResponse(code = HttpURLConnection.HTTP_NOT_FOUND, message = "NOT FOUND"),
@@ -89,19 +77,19 @@ public class UserController {
             @ApiResponse(code = HttpURLConnection.HTTP_FORBIDDEN, message = "FORBIDDEN")
     })
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody @Validated(CreateRq.class) UserRqDto userRq) {
-        var user = userService.create(userRq);
+    public ResponseEntity<?> create(@RequestBody @Validated(CreateRq.class) NoteRqDto noteRq) {
+        var note = noteService.create(noteRq);
         var location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(user.getId())
+                .buildAndExpand(note.getId())
                 .toUri();
 
         return ResponseEntity.created(location)
-                .body(user);
+                .body(note);
     }
 
 
-    @ApiOperation("Обновление пользователя")
+    @ApiOperation("Изменение заметки")
     @ApiResponses({
             @ApiResponse(code = HttpURLConnection.HTTP_OK, message = "OK"),
             @ApiResponse(code = HttpURLConnection.HTTP_NOT_FOUND, message = "NOT FOUND"),
@@ -109,15 +97,15 @@ public class UserController {
             @ApiResponse(code = HttpURLConnection.HTTP_FORBIDDEN, message = "FORBIDDEN")
     })
     @PutMapping("/{id}")
-    public UserRsDto update(@PathVariable Long id, @RequestBody @Validated(UpdateRq.class) UserRqDto user) {
-        return userService.update(id, user)
+    public NoteRsDto update(@PathVariable Long id, @RequestBody @Validated(UpdateRq.class) NoteRqDto note) {
+        return noteService.update(id, note)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        String.format(USER_NOT_FOUND_BY_ID, id)
+                        String.format(NOTE_NOT_FOUND_BY_ID, id)
                 ));
     }
 
-    @ApiOperation("Удаление пользователя")
+    @ApiOperation("Удаление заметки")
     @ApiResponses({
             @ApiResponse(code = HttpURLConnection.HTTP_OK, message = "OK"),
             @ApiResponse(code = HttpURLConnection.HTTP_NOT_FOUND, message = "NOT FOUND"),
@@ -126,7 +114,7 @@ public class UserController {
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<UserRsDto> delete(@PathVariable Long id) {
-        userService.delete(id);
+        noteService.delete(id);
         return ResponseEntity.accepted()
                 .build();
     }

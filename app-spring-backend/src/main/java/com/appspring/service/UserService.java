@@ -1,7 +1,6 @@
 package com.appspring.service;
 
 import com.appspring.entity.User;
-import com.appspring.rest.dto.UserFilterDto;
 import com.appspring.rest.dto.UserRqDto;
 import com.appspring.rest.dto.UserRsDto;
 import org.springframework.data.domain.Page;
@@ -67,4 +66,11 @@ public interface UserService {
      * @param id ID пользователя
      */
     void delete(Long id);
+
+    /**
+     * Проверить является ли id текущего пользователя
+     * @param id пользователя
+     * @return Boolean true если id принадлежит текущему пользователю
+     */
+    Boolean isCurrentUser(Long id);
 }

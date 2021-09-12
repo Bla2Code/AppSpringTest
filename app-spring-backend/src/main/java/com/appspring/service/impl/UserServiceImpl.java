@@ -174,7 +174,8 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    private boolean isCurrentUser(Long id) {
+    @Override
+    public Boolean isCurrentUser(Long id) {
         return getCurrentUser()
                 .map(UserRsDto::getId)
                 .filter(currentUserId -> currentUserId.equals(id))
