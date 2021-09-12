@@ -8,6 +8,7 @@ import com.appspring.security.JwtTokenUtil;
 import com.appspring.service.UserService;
 import io.swagger.annotations.Api;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,7 @@ import javax.servlet.http.HttpServletRequest;
 @RequiredArgsConstructor
 @Api(tags = "Авторизация")
 @RestController
+@Slf4j
 public class AuthController {
 
     @Autowired
@@ -36,8 +38,6 @@ public class AuthController {
     private JwtTokenUtil jwtTokenUtil;
     @Autowired
     private UserMapper userMapper;
-    @Autowired
-    private UserService userService;
 
     @PostMapping("/public/auth/login")
     public ResponseEntity<UserRsDto> login(@RequestBody @Validated AuthRequest request) {
@@ -51,13 +51,17 @@ public class AuthController {
 
             User user = (User) authenticate.getPrincipal();
 
-//            userService.updateLastActivity(Instant.now(), user.getId());
+            if (user.getDeleted().equals(true)) {
+                log.debug("Попытка авторизовать удаленного пользователя");
+                throw new BadCredentialsException("Пользователь удален");
+            }
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.AUTHORIZATION,
                             jwtTokenUtil.generateAccessToken(user.getId(), user.getLogin()))
                     .body(userMapper.entityToRsDto(user));
         } catch (BadCredentialsException ex) {
+            log.debug("Ошибка авторизации " + ex.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }

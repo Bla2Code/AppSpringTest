@@ -49,7 +49,7 @@ public class UserController {
     })
     @GetMapping
     public Page<UserRsDto> getAll(@ModelAttribute UserFilterDto filter, Pageable pageable) {
-        return userService.findAll(UserSpecificationBuilder.getEventConfigSpecification(filter), pageable);
+        return userService.findAll(UserSpecificationBuilder.getUserConfigSpecification(filter), pageable);
     }
 
     @ApiOperation("Запрос пользователя по ID")

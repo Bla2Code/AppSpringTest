@@ -38,20 +38,13 @@ public interface NoteService {
     Optional<NoteRsDto> getById(Long id);
 
     /**
-     * Запрос всех заметок пользователя
-     *
-     * @return {@link Optional} of {@link NoteRsDto}
-     */
-    Optional<NoteRsDto> getUserNote();
-
-    /**
      * Обновление данных заметки по ID
      *
      * @param id        ID заметки
      * @param NoteRqDto данные для обновления
      * @return {@link Optional} of {@link NoteRsDto}
      */
-    Optional<NoteRsDto> update(Long id, NoteRqDto NoteRsDto);
+    Optional<NoteRsDto> update(Long id, NoteRqDto NoteRqDto);
 
     /**
      * Удаление заметки по ID

@@ -4,139 +4,140 @@ import com.appspring.entity.Note;
 import com.appspring.entity.User;
 import com.appspring.entity.model.Role;
 import com.appspring.exception.BadRequestException;
-import com.appspring.exception.ForbiddenException;
-import com.appspring.exception.PasswordNotValidException;
 import com.appspring.mapper.NoteMapper;
 import com.appspring.repository.NoteRepository;
+import com.appspring.repository.UserRepository;
 import com.appspring.rest.dto.NoteRqDto;
 import com.appspring.rest.dto.NoteRsDto;
 import com.appspring.service.NoteService;
+import com.appspring.service.UserService;
 import com.appspring.util.BeanUtilsHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class NoteServiceImpl implements NoteService {
 
-    private static final String USER_ALREADY_EXISTS = "Пользователь с Логином = %s уже зарегистрирован";
-    private static final String USER_NOT_FOUND = "Пользователь с id = %d не найден";
-    private static final String PASSWORD_NOT_SET  = "Текущий пароль не задан!";
-    private static final String PASSWORD_NOT_MATCH   = "Введённый пароль не совпадает с текущим";
-    private static final String USER_OWN   = "Нельзя удалить собственную учетную запись";
+    private static final String NOTE_NOT_FOUND = "Заметка с id = %d не найден";
 
-    private final PasswordEncoder passwordEncoder;
     private final NoteRepository noteRepository;
     private final NoteMapper noteMapper;
+    private final UserService userService;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     @Override
     public Page<NoteRsDto> findAll(Specification<Note> filter, Pageable pageable) {
-        return noteRepository.findAll(filter, pageable)
-                .map(noteMapper::entityToRsDto);
+        List<NoteRsDto> noteRsDtoList = noteRepository.findAll(filter, pageable).stream()
+                .filter(this::checkOwner)
+                .map(noteMapper::entityToRsDto)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(noteRsDtoList, pageable, noteRsDtoList.size());
     }
 
     @Transactional(readOnly = true)
     @Override
     public Optional<NoteRsDto> getById(Long id) {
         return noteRepository.findById(id)
-                .filter(user -> user.getDeleted().equals(false))
+                .filter(this::checkOwner)
+                .filter(note -> {
+                    if (Objects.nonNull(note.getDeleted())) {
+                        return note.getDeleted().equals(false);
+                    }
+                    return false;
+                })
                 .map(noteMapper::entityToRsDto);
     }
 
     @Transactional
     @Override
     public NoteRsDto create(NoteRqDto NoteRqDto) {
-        validateUser(NoteRqDto);
-        User user = noteMapper.rqDtoToEntity(NoteRqDto);
-        user.setPassword(passwordEncoder.encode(NoteRqDto.getNewPassword()));
+        Note note = noteMapper.rqDtoToEntity(NoteRqDto);
         Instant now = Instant.now();
-        user.setCreated(now);
-        user.setUpdated(now);
+        note.setCreated(now);
+        note.setUpdated(now);
+        note.setUser(getNoteUser());
 
-        return noteMapper.entityToRsDto(noteRepository.save(user));
+        return noteMapper.entityToRsDto(noteRepository.save(note));
     }
 
-    @Transactional(readOnly = true)
-    @Override
-    public Optional<NoteRsDto> getCurrentUser() {
-        UserDetails userDetails = getCurrentUserDetails();
-        return Objects.isNull(userDetails) ? Optional.empty() : findByLogin(userDetails.getUsername());
-    }
-
-    @Transactional
-    @Override
-    public Optional<NoteRsDto> findByLogin(String login) {
-        return noteRepository.findByLogin(login)
-                .filter(user -> user.getDeleted().equals(false))
-                .map(noteMapper::entityToRsDto);
+    private User getNoteUser() {
+        return userService.getCurrentUser()
+                .map(userRsDto -> userRepository.findById(userRsDto.getId()))
+                .flatMap(user -> user)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     @Transactional
     @Override
     public Optional<NoteRsDto> update(Long id, NoteRqDto NoteRqDto) {
-        User user = noteRepository.findById(id)
+        Note note = noteRepository.findById(id)
                 .filter(isDelete -> isDelete.getDeleted().equals(false))
+                .filter(this::checkOwner)
                 .orElseThrow(() -> {
-                    log.warn("Пользователь для обновления с id = {} не найден.", id);
-                    throw new BadRequestException(String.format(USER_NOT_FOUND, id));
+                    log.warn("Заметка для обновления с id = {} не найден.", id);
+                    throw new BadRequestException(String.format(NOTE_NOT_FOUND, id));
                 });
 
-        validateUserUpdate(user, NoteRqDto);
+        BeanUtils.copyProperties(NoteRqDto, note, BeanUtilsHelper.getNullPropertyNames(NoteRqDto));
 
-        BeanUtils.copyProperties(NoteRqDto, user, BeanUtilsHelper.getNullPropertyNames(
-                NoteRqDto, "password", "role"));
+        note.setUpdated(Instant.now());
 
-        if (Objects.nonNull(NoteRqDto.getNewPassword())) {
-            user.setPassword(passwordEncoder.encode(NoteRqDto.getNewPassword()));
-        }
-
-        Instant now = Instant.now();
-        user.setUpdated(now);
-
-        return Optional.of(user).map(noteMapper::entityToRsDto);
+        return Optional.of(note).map(noteMapper::entityToRsDto);
     }
 
     @Transactional
     @Override
     public void delete(Long id) {
-        if (isCurrentUser(id)) {
-            log.warn("Попытка удалить собственную запись");
-            throw new ForbiddenException(USER_OWN);
-        }
-
         noteRepository.findById(id)
                 .filter(isDelete -> isDelete.getDeleted().equals(false))
+                .filter(this::checkOwner)
                 .ifPresentOrElse(
-                        user -> {
-                            user.setDeleted(true);
-                            user.setUpdated(Instant.now());
+                        note -> {
+                            note.setDeleted(true);
+                            note.setUpdated(Instant.now());
                         },
-                        () -> log.warn("Пользователь для удаления с id = {} не найден.", id));
+                        () -> {
+                            log.warn("Запись для удаления с id = {} не найдена.", id);
+                            throw new BadRequestException(String.format(NOTE_NOT_FOUND, id));
+                        });
+    }
+
+    private Boolean checkOwner(Note note) {
+        if (isAdmin()) {
+            return true;
+        }
+        if (Objects.nonNull(note.getUser())) {
+            return userService.isCurrentUser(note.getUser().getId());
+        }
+        return false;
     }
 
     private Boolean isAdmin() {
         UserDetails currentUserDetails = getCurrentUserDetails();
 
-        if(Objects.isNull(currentUserDetails)) {
+        if (Objects.isNull(currentUserDetails)) {
             return false;
         }
 
@@ -144,41 +145,9 @@ public class NoteServiceImpl implements NoteService {
                 .anyMatch(role -> role.getAuthority().equals(Role.ROLE_ADMIN.name()));
     }
 
-    private void validateUserUpdate(User user, NoteRqDto NoteRqDto) {
-        Boolean isAdmin = isAdmin();
-
-        if (!isAdmin &&
-                StringUtils.isEmpty(NoteRqDto.getCurrentPassword()) &&
-                !StringUtils.isEmpty(NoteRqDto.getNewPassword())) {
-            log.warn("При обновлении пароля пользователя с id = {} не задан текущий пароль.", user.getId());
-            throw new BadRequestException(PASSWORD_NOT_SET);
-        }
-
-        if (!isAdmin &&
-                !StringUtils.isEmpty(NoteRqDto.getCurrentPassword()) &&
-                !StringUtils.isEmpty(NoteRqDto.getNewPassword()) &&
-                !passwordEncoder.matches(NoteRqDto.getCurrentPassword(), user.getPassword())) {
-            log.warn("При обновлении пароля пользователя с id = {} не верно введен пароль", user.getId());
-            throw new PasswordNotValidException(PASSWORD_NOT_MATCH);
-        }
-    }
-
     private UserDetails getCurrentUserDetails() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return (UserDetails) authentication.getPrincipal();
     }
 
-    public void validateUser(NoteRqDto NoteRqDto) {
-        String login = NoteRqDto.getLogin();
-        if (noteRepository.findByLogin(login).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, String.format(USER_ALREADY_EXISTS, login));
-        }
-    }
-
-    private boolean isCurrentUser(Long id) {
-        return getCurrentUser()
-                .map(NoteRsDto::getId)
-                .filter(currentUserId -> currentUserId.equals(id))
-                .isPresent();
-    }
 }

@@ -66,4 +66,11 @@ public interface UserService {
      * @param id ID пользователя
      */
     void delete(Long id);
+
+    /**
+     * Проверить является ли id текущего пользователя
+     * @param id пользователя
+     * @return Boolean true если id принадлежит текущему пользователю
+     */
+    Boolean isCurrentUser(Long id);
 }
