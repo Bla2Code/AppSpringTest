@@ -1,0 +1,73 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.5.xsd">
+
+    <changeSet author="malexey" id="feature/#9-0">
+        <createSequence sequenceName="hibernate_sequence"/>
+    </changeSet>
+
+    <changeSet author="malexey" id="feature/#9-1">
+        <createTable tableName="audit_revision">
+            <column autoIncrement="true" name="id" type="INT">
+                <constraints primaryKey="true" primaryKeyName="audit_revisionPK"/>
+            </column>
+            <column name="timestamp" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="username" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="malexey" id="feature/#9-2">
+        <createTable tableName="notes_aud">
+            <column name="id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="SMALLINT"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="description" type="TEXT"/>
+            <column name="deleted" type="BOOLEAN"/>
+            <column name="user_id" type="BIGINT"/>
+            <column name="created" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="updated" type="TIMESTAMP WITHOUT TIME ZONE"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="malexey" id="feature/#9-3">
+        <createTable tableName="users_aud">
+            <column name="id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="SMALLINT"/>
+            <column name="deleted" type="BOOLEAN"/>
+            <column name="login" type="VARCHAR(255)"/>
+            <column name="password" type="VARCHAR(255)"/>
+            <column name="role" type="VARCHAR(255)"/>
+            <column name="status" type="VARCHAR(255)"/>
+            <column name="created" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="updated" type="TIMESTAMP WITHOUT TIME ZONE"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="malexey" id="feature/#9-4">
+        <addPrimaryKey columnNames="id, rev" constraintName="notes_audPK" tableName="notes_aud"/>
+    </changeSet>
+
+    <changeSet author="malexey" id="feature/#9-5">
+        <addPrimaryKey columnNames="id, rev" constraintName="users_audPK" tableName="users_aud"/>
+    </changeSet>
+
+    <changeSet author="malexey" id="feature/#9-6">
+        <addForeignKeyConstraint baseColumnNames="rev" baseTableName="users_aud" constraintName="FK6cdvw35pflewpwyjbdxirp598" deferrable="false" initiallyDeferred="false" referencedColumnNames="id" referencedTableName="audit_revision"/>
+    </changeSet>
+
+    <changeSet author="malexey" id="feature/#9-7">
+        <addForeignKeyConstraint baseColumnNames="rev" baseTableName="notes_aud" constraintName="FKejikyi3dmmnagujr9djbavwat" deferrable="false" initiallyDeferred="false" referencedColumnNames="id" referencedTableName="audit_revision"/>
+    </changeSet>
+
+</databaseChangeLog>
