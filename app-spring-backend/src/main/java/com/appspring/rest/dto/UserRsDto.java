@@ -18,7 +18,7 @@ public class UserRsDto {
     @ApiModelProperty(value = "ID пользователя", example = "1")
     private Long id;
 
-    @ApiModelProperty(value = "Логин", example = "myLogin")
+    @ApiModelProperty(value = "Логин", example = "user1")
     private String login;
 
     @ApiModelProperty(value = "Роль", example = "ROLE_USER")
