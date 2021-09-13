@@ -20,7 +20,7 @@ import javax.validation.constraints.NotNull;
 @AllArgsConstructor
 public class UserRqDto {
 
-    @ApiModelProperty(value = "Логин", example = "myLogin")
+    @ApiModelProperty(value = "Логин", example = "user1")
     @NotEmpty(groups = {CreateRq.class, UpdateRq.class})
     private String login;
 

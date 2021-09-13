@@ -7,7 +7,7 @@
             <column name="login">admin</column>
             <column name="password">$2a$10$RiSIQ4p6U9QDQfNziwBq8uPaDp3wnC882sj0Z96C5461xqZxuD/Ke</column>
             <column name="role">ROLE_ADMIN</column>
-            <column name="deleted">true</column>
+            <column name="deleted">false</column>
             <column name="status">ACTIVE</column>
             <column name="created">NOW()</column>
             <column name="updated">NOW()</column>

@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldNameConstants;
+import org.hibernate.envers.Audited;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -24,6 +25,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @Builder
 @FieldNameConstants
+@Audited
 @Table(name = "notes")
 public class Note {
 
